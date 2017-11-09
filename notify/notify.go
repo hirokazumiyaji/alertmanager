@@ -59,6 +59,7 @@ func init() {
 	numNotifications.WithLabelValues("opsgenie")
 	numNotifications.WithLabelValues("webhook")
 	numNotifications.WithLabelValues("victorops")
+	numNotifications.WithLabelValues("linenotify")
 	numFailedNotifications.WithLabelValues("email")
 	numFailedNotifications.WithLabelValues("hipchat")
 	numFailedNotifications.WithLabelValues("pagerduty")
@@ -67,6 +68,7 @@ func init() {
 	numFailedNotifications.WithLabelValues("opsgenie")
 	numFailedNotifications.WithLabelValues("webhook")
 	numFailedNotifications.WithLabelValues("victorops")
+	numFailedNotifications.WithLabelValues("linenotify")
 
 	prometheus.Register(numNotifications)
 	prometheus.Register(numFailedNotifications)

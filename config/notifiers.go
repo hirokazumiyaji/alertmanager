@@ -117,6 +117,9 @@ var (
 		Retry:    duration(1 * time.Minute),
 		Expire:   duration(1 * time.Hour),
 	}
+
+	// DefaultLineNotifyConfig defines default values for LINE Notify configurations.
+	DefaultLineNotifyConfig = LineNotifyConfig{}
 )
 
 // NotifierConfig contains base options common across all notifier configurations.
@@ -398,4 +401,26 @@ func (c *PushoverConfig) UnmarshalYAML(unmarshal func(interface{}) error) error 
 		return fmt.Errorf("missing token in Pushover config")
 	}
 	return checkOverflow(c.XXX, "pushover config")
+}
+
+type LineNotifyConfig struct {
+	NotifierConfig `yaml:",inline" json:",inline"`
+
+	AccessToken Secret `yaml:"access_token,omitempty" json:"access_token,omitempty"`
+
+	// Catches all undefined fields and must be empty after parsing.
+	XXX map[string]interface{} `yaml:",inline" json:"-"`
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (c *LineNotifyConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	*c = DefaultLineNotifyConfig
+	type plain LineNotifyConfig
+	if err := unmarshal((*plain)(c)); err != nil {
+		return err
+	}
+	if c.AccessToken == "" {
+		return fmt.Errorf("missing access token in LINE Notify config")
+	}
+	return checkOverflow(c.XXX, "LINE Notify config")
 }

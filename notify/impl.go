@@ -133,10 +133,17 @@ func BuildReceiverIntegrations(nc *config.Receiver, tmpl *template.Template, log
 		n := NewPushover(c, tmpl, logger)
 		add("pushover", i, n, c)
 	}
+	for i, c := range nc.LineNotifyConfigs {
+		n := NewLineNotify(c, tmpl, logger)
+		add("linenotify", i, n, c)
+	}
 	return integrations
 }
 
-const contentTypeJSON = "application/json"
+const (
+	contentTypeJSON           = "application/json"
+	contentTypeFormURLEncoded = "application/x-www-form-urlencoded"
+)
 
 var userAgentHeader = fmt.Sprintf("Alertmanager/%s", version.Version)
 
@@ -1103,6 +1110,49 @@ func (n *Pushover) Notify(ctx context.Context, as ...*types.Alert) (bool, error)
 			return false, err
 		}
 		return false, fmt.Errorf("unexpected status code %v (body: %s)", resp.StatusCode, string(body))
+	}
+
+	return false, nil
+}
+
+const LineNofiyEndpoint = "https://notify-api.line.me/api/notify"
+
+// LineNotify implements a Notifier for LINE Notify
+type LineNotify struct {
+	tmpl   *template.Template
+	logger log.Logger
+}
+
+// NewLineNotify returns a new LineNotify
+func NewLineNotify(conf *config.LineNotifyConfig, t *template.Template, l log.Logger) *LineNotify {
+	return &LineNotify{tmpl: t, logger: l}
+}
+
+// Notify implements the Notifier interface.
+func (l *LineNotify) Notify(ctx context.Context, alerts ...*types.Alert) (bool, error) {
+	data := w.tmpl.Data(receiverName(ctx, w.logger), groupLabels(ctx, w.logger), alerts...)
+
+	values := url.Values{}
+	values.Set("message", data)
+
+	req, err := http.NewRequest("POST", LineNotifyEndpoint, strings.NewReader(values.Encode()))
+	if err != nil {
+		return true, err
+	}
+	req.Header.Set("Content-Type", contentTypeFormURLEncoded)
+
+	resp, err := ctxhttp.Do(ctx, http.DefaultClient, req)
+	if err != nil {
+		return true, err
+	}
+	resp.Body.Close()
+
+	return l.retry(resp.StatusCode)
+}
+
+func (l *LineNotify) retry(statusCode int) (bool, error) {
+	if statusCode/100 != 2 {
+		return (statusCode/100 == 5), fmt.Errorf("unexpected status code %v", statusCode)
 	}
 
 	return false, nil
